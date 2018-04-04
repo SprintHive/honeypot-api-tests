@@ -1,0 +1,83 @@
+buildscript {
+    ext {
+        springBootVersion = '1.5.10.RELEASE'
+    }
+    repositories {
+        maven {
+            credentials {
+                username 'admin'
+                password 'admin123'
+            }
+            url 'http://nexus/content/groups/public'
+        }
+        mavenCentral()
+    }
+    dependencies {
+        classpath("org.springframework.boot:spring-boot-gradle-plugin:${springBootVersion}")
+        classpath 'org.junit.platform:junit-platform-gradle-plugin:1.1.0'
+    }
+}
+
+apply plugin: 'java'
+apply plugin: 'eclipse'
+apply plugin: 'org.springframework.boot'
+apply plugin: "io.spring.dependency-management"
+
+ext {
+    springCloudVersion = 'Ditmars.SR3'
+    droolsRuntimeVersion = '7.5.0.Final'
+}
+
+dependencyManagement {
+    imports {
+        mavenBom "org.springframework.cloud:spring-cloud-stream-dependencies:${springCloudVersion}"
+        mavenBom "org.springframework.cloud:spring-cloud-dependencies:Edgware.SR2"
+    }
+}
+
+version = '0.0.1-SNAPSHOT'
+sourceCompatibility = 1.8
+
+jar {
+    baseName "OriginationService"
+}
+
+repositories {
+    maven {
+          credentials {
+              username 'admin'
+              password 'admin123'
+          }
+        url 'http://nexus/content/groups/public'
+    }
+    mavenCentral()
+}
+
+dependencies {
+    compile('org.springframework.boot:spring-boot-starter-web')
+    compile("org.springframework.boot:spring-boot-starter-actuator")
+    compile("org.springframework.boot:spring-boot-starter-data-mongodb:1.5.10.RELEASE")
+    compile('org.springframework.cloud:spring-cloud-starter-openfeign')
+    compile('com.thoughtworks.xstream:xstream:1.4.10')
+    compile('org.projectlombok:lombok:1.16.18')
+
+    compile('com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.9.1')
+    compile('net.logstash.logback:logstash-logback-encoder:4.11')
+    compile('org.springframework.kafka:spring-kafka')
+    compile('org.springframework.boot:spring-boot-starter-amqp')
+    compile('org.springframework.cloud:spring-cloud-stream-binder-rabbit')
+    compile("org.kie:kie-api:${droolsRuntimeVersion}")
+    compile("org.drools:drools-core:${droolsRuntimeVersion}")
+    compile("org.drools:drools-compiler:${droolsRuntimeVersion}")
+
+
+    testCompile('org.springframework.boot:spring-boot-starter-test')
+}
+
+bootRun {
+    def custom_props = ['APP_NAME': 'OriginationService', 'APP_VERSION': 'v0.0.1',
+                        'APP_NAMESPACE': 'local', 'APP_POD_NAME': 'dev-pod']
+
+    environment.putAll(custom_props)
+    systemProperties System.properties
+}
