@@ -21,6 +21,7 @@ import static org.assertj.core.api.Assertions.fail;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 public class ACMEStoreCardTest {
@@ -30,7 +31,7 @@ public class ACMEStoreCardTest {
 
     @Before
     public void setup() {
-        originationService = new RestTemplateOriginationV1Client(new RestTemplate(), "https://honeypot.sprinthive.tech/lead");
+        originationService = new RestTemplateOriginationV1Client(new RestTemplate(), "http://127.0.0.1:8080");
     }
 
     // Condition match sets state to success
@@ -71,8 +72,6 @@ public class ACMEStoreCardTest {
         originationService.setLastName(lead.getLeadId(), "Jimmy");
         lead = originationService.getLead(lead.getLeadId());
         assertEquals("pending", lead.getMetadata().getCustomState().get(stateKey).get("statusCode").asText());
-        assertFalse(lead.getMetadata().getCustomState().get(stateKey).has("refId"));
-        assertFalse(lead.getMetadata().getCustomState().get(stateKey).has("lastUpdated"));
     }
 
     // A failed state propagates the failure to dependant state evaluations
@@ -113,12 +112,14 @@ public class ACMEStoreCardTest {
         originationService.setGrossMonthlyIncome(lead.getLeadId(), 1000D);
         originationService.addProofOfIncome(lead.getLeadId(), "bankStatement.pdf",
                 ByteBuffer.allocate(0).array(), FileMetadata.FileType.BANK_STATEMENT);
-        originationService.setMonthlyLivingExpense(lead.getLeadId(), "rent", 8000);
+        originationService.addProofOfIdentity(lead.getLeadId(), "id.pdf",
+                ByteBuffer.allocate(0).array(), FileMetadata.FileType.DRIVERS_LICENSE);
         originationService.setRepaymentPeriod(lead.getLeadId(), 6);
         originationService.setLoanAmount(lead.getLeadId(),  10000D);
         originationService.setMaritalStatus(lead.getLeadId(), "not-married");
+        originationService.setMonthlyLivingExpense(lead.getLeadId(), "rent", 7000);
 
-        Thread.sleep(500);
+        Thread.sleep(1500);
 
         lead = originationService.getLead(lead.getLeadId());
         assertEquals("denied", lead.getMetadata().getLeadStatus().getStatusCode());
@@ -126,8 +127,9 @@ public class ACMEStoreCardTest {
 
         originationService.setGrossMonthlyIncome(lead.getLeadId(), 100000D);
 
-        Thread.sleep(500);
+        Thread.sleep(1500);
 
+        lead = originationService.getLead(lead.getLeadId());
         assertEquals("approved", lead.getMetadata().getLeadStatus().getStatusCode());
         assertEquals("generated", lead.getMetadata().getCustomState().get("contract").get("statusCode").asText());
         assertEquals("verified", lead.getMetadata().getCustomState().get("affordability").get("statusCode").asText());
@@ -144,12 +146,14 @@ public class ACMEStoreCardTest {
         originationService.setGrossMonthlyIncome(lead.getLeadId(), 30000D);
         originationService.addProofOfIncome(lead.getLeadId(), "bankStatement.pdf",
                 ByteBuffer.allocate(0).array(), FileMetadata.FileType.BANK_STATEMENT);
-        originationService.setMonthlyLivingExpense(lead.getLeadId(), "rent", 8000);
+        originationService.addProofOfIdentity(lead.getLeadId(), "id.pdf",
+                ByteBuffer.allocate(0).array(), FileMetadata.FileType.DRIVERS_LICENSE);
         originationService.setRepaymentPeriod(lead.getLeadId(), 6);
         originationService.setLoanAmount(lead.getLeadId(),  10000D);
         originationService.setMaritalStatus(lead.getLeadId(), "not-married");
+        originationService.setMonthlyLivingExpense(lead.getLeadId(), "rent", 7000);
 
-        Thread.sleep(1200);
+        Thread.sleep(2000);
 
         lead = originationService.getLead(lead.getLeadId());
         assertEquals("approved", lead.getMetadata().getLeadStatus().getStatusCode());
@@ -162,12 +166,13 @@ public class ACMEStoreCardTest {
         originationService.setGrossMonthlyIncome(lead.getLeadId(),50000D);
 
         lead = originationService.getLead(lead.getLeadId());
+
         assertEquals("pending", lead.getMetadata().getLeadStatus().getStatusCode());
         assertEquals("pending", lead.getMetadata().getCustomState().get("incomeVerification").get("statusCode").asText());
         assertEquals("pending", lead.getMetadata().getCustomState().get("affordability").get("statusCode").asText());
         assertEquals("pending", lead.getMetadata().getCustomState().get("creditDecision").get("statusCode").asText());
         assertEquals("pending", lead.getMetadata().getCustomState().get("contract").get("statusCode").asText());
-        assertFalse(lead.getMetadata().getCustomState().get("contract").has("evidenceId"));
+        assertTrue(lead.getMetadata().getCustomState().get("contract").get("evidenceId").isNull());
     }
 
     // An update resets any states that depend on the updated field and the reset is propagated to dependent states
@@ -181,12 +186,14 @@ public class ACMEStoreCardTest {
         originationService.setGrossMonthlyIncome(lead.getLeadId(), 30000D);
         originationService.addProofOfIncome(lead.getLeadId(), "bankStatement.pdf",
                 ByteBuffer.allocate(0).array(), FileMetadata.FileType.BANK_STATEMENT);
-        originationService.setMonthlyLivingExpense(lead.getLeadId(), "rent", 8000);
+        originationService.addProofOfIdentity(lead.getLeadId(), "id.pdf",
+                ByteBuffer.allocate(0).array(), FileMetadata.FileType.DRIVERS_LICENSE);
         originationService.setRepaymentPeriod(lead.getLeadId(), 6);
         originationService.setLoanAmount(lead.getLeadId(),  10000D);
         originationService.setMaritalStatus(lead.getLeadId(), "not-married");
+        originationService.setMonthlyLivingExpense(lead.getLeadId(), "rent", 7000);
 
-        Thread.sleep(1200);
+        Thread.sleep(2000);
 
         lead = originationService.getLead(lead.getLeadId());
         assertEquals("approved", lead.getMetadata().getLeadStatus().getStatusCode());
@@ -197,13 +204,14 @@ public class ACMEStoreCardTest {
 
         originationService.setGrossMonthlyIncome(lead.getLeadId(), 5000D);
 
+        Thread.sleep(2000);
+
         lead = originationService.getLead(lead.getLeadId());
         assertEquals("denied", lead.getMetadata().getLeadStatus().getStatusCode());
-        assertEquals("failed", lead.getMetadata().getCustomState().get("incomeVerification").get("statusCode").asText());
         assertEquals("failed", lead.getMetadata().getCustomState().get("affordability").get("statusCode").asText());
         assertEquals("denied", lead.getMetadata().getCustomState().get("creditDecision").get("statusCode").asText());
         assertEquals("pending", lead.getMetadata().getCustomState().get("contract").get("statusCode").asText());
-        assertFalse(lead.getMetadata().getCustomState().get("contract").has("evidenceId"));
+        assertTrue(lead.getMetadata().getCustomState().get("contract").get("evidenceId").isNull());
     }
 
     @Test
@@ -216,19 +224,21 @@ public class ACMEStoreCardTest {
         originationService.setGrossMonthlyIncome(lead.getLeadId(), 30000D);
         originationService.addProofOfIncome(lead.getLeadId(), "bankStatement.pdf",
                 ByteBuffer.allocate(0).array(), FileMetadata.FileType.BANK_STATEMENT);
-        originationService.setMonthlyLivingExpense(lead.getLeadId(), "rent", 8000);
+        originationService.addProofOfIdentity(lead.getLeadId(), "id.pdf",
+                ByteBuffer.allocate(0).array(), FileMetadata.FileType.DRIVERS_LICENSE);
         originationService.setRepaymentPeriod(lead.getLeadId(), 6);
         originationService.setLoanAmount(lead.getLeadId(),  10000D);
         originationService.setMaritalStatus(lead.getLeadId(), "not-married");
+        originationService.setMonthlyLivingExpense(lead.getLeadId(), "rent", 7000);
 
-        Thread.sleep(1200);
+        Thread.sleep(2000);
 
         lead = originationService.getLead(lead.getLeadId());
         assertEquals("approved", lead.getMetadata().getLeadStatus().getStatusCode());
         assertTrue(lead.getMetadata().getCustomState().containsKey("contract"));
         assertEquals("generated", lead.getMetadata().getCustomState().get("contract").get("statusCode").asText());
 
-        originationService.submit(lead.getLeadId());
+        originationService.setTermsAndConditionsAccepted(lead.getLeadId(), true);
 
         try {
             originationService.setMonthlyLivingExpense(lead.getLeadId(), "coffee", 5000);
@@ -254,10 +264,9 @@ public class ACMEStoreCardTest {
         originationService.setRepaymentPeriod(lead.getLeadId(), 6);
         originationService.setLoanAmount(lead.getLeadId(),  10000D);
         originationService.setMaritalStatus(lead.getLeadId(), "not-married");
-
-        Thread.sleep(1200);
         originationService.setMonthlyLivingExpense(lead.getLeadId(), "rent", 7000);
-        Thread.sleep(1200);
+
+        Thread.sleep(2000);
 
         lead = originationService.getLead(lead.getLeadId());
         assertEquals("approved", lead.getMetadata().getLeadStatus().getStatusCode());
@@ -292,7 +301,7 @@ public class ACMEStoreCardTest {
         originationService.setFirstName(lead.getLeadId(), "Little");
         originationService.setIdNumber(lead.getLeadId(), "7709125081078");
 
-        Thread.sleep(100);
+        Thread.sleep(1200);
 
         lead = originationService.getLead(lead.getLeadId());
         assertEquals("verified", lead.getMetadata().getCustomState().get(stateKey).get("statusCode").asText());
@@ -309,7 +318,7 @@ public class ACMEStoreCardTest {
         originationService.setFirstName(lead.getLeadId(), "Little");
         originationService.setIdNumber(lead.getLeadId(), "7709125081078");
 
-        Thread.sleep(100);
+        Thread.sleep(1200);
 
         lead = originationService.getLead(lead.getLeadId());
         assertEquals("verified", lead.getMetadata().getCustomState().get(stateKey).get("statusCode").asText());
@@ -326,7 +335,7 @@ public class ACMEStoreCardTest {
         originationService.addProofOfIncome(lead.getLeadId(), "bankStatement.pdf",
                 ByteBuffer.allocate(0).array(), FileMetadata.FileType.BANK_STATEMENT);
 
-        Thread.sleep(100);
+        Thread.sleep(1200);
 
         lead = originationService.getLead(lead.getLeadId());
         assertEquals("verified", lead.getMetadata().getCustomState().get(stateKey).get("statusCode").asText());
@@ -349,7 +358,7 @@ public class ACMEStoreCardTest {
         originationService.setRepaymentPeriod(lead.getLeadId(), 6);
         originationService.setLoanAmount(lead.getLeadId(),  10000D);
 
-        Thread.sleep(100);
+        Thread.sleep(1200);
 
         lead = originationService.getLead(lead.getLeadId());
         assertEquals("verified", lead.getMetadata().getCustomState().get(stateKey).get("statusCode").asText());
@@ -372,7 +381,7 @@ public class ACMEStoreCardTest {
         originationService.setRepaymentPeriod(lead.getLeadId(), 6);
         originationService.setLoanAmount(lead.getLeadId(),  10000D);
 
-        Thread.sleep(100);
+        Thread.sleep(1500);
 
         lead = originationService.getLead(lead.getLeadId());
         assertEquals("approved", lead.getMetadata().getCustomState().get(stateKey).get("statusCode").asText());
@@ -386,7 +395,7 @@ public class ACMEStoreCardTest {
 
         originationService.setMaritalStatus(lead.getLeadId(), "not-married");
 
-        Thread.sleep(1200);
+        Thread.sleep(500);
 
         lead = originationService.getLead(lead.getLeadId());
         assertEquals(true, lead.getMetadata().getCustomState().get(stateKey).asBoolean());
@@ -399,7 +408,7 @@ public class ACMEStoreCardTest {
 
         originationService.setMaritalStatus(lead.getLeadId(), "married");
 
-        Thread.sleep(1200);
+        Thread.sleep(500);
 
         lead = originationService.getLead(lead.getLeadId());
         assertEquals(false, lead.getMetadata().getCustomState().get(stateKey).asBoolean());
